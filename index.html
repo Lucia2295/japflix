@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Japflix</title>
+
+  <link href="css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link rel="stylesheet" href="css/style.css">
+
+  <style>
+    .estrella-container i {
+      color: gold; 
+    }
+  </style>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const apiURL = "https://japceibal.github.io/japflix_api/movies-data.json";
+      let moviesData = [];
+
+      fetch(apiURL)
+        .then(response => response.json())
+        .then(data => {
+          moviesData = data;
+          localStorage.setItem('moviesData', JSON.stringify(moviesData));
+        })
+        .catch(error => console.error("Error al cargar los datos:", error));
+
+      const generarEstrellas = (vote_average) => {
+        const maxStars = 5;
+        let estrellasHTML = '';
+        const fullStars = Math.floor(vote_average / 2);
+        const halfStar = vote_average % 2 >= 1 ? 1 : 0;
+        const emptyStars = maxStars - fullStars - halfStar;
+
+        for (let i = 0; i < fullStars; i++) {
+          estrellasHTML += '<i class="fa fa-star"></i>';
+        }
+        if (halfStar) {
+          estrellasHTML += '<i class="fa fa-star-half-o"></i>';
+        }
+        for (let i = 0; i < emptyStars; i++) {
+          estrellasHTML += '<i class="fa fa-star-o"></i>';
+        }
+
+        return estrellasHTML;
+      };
+
+      const buscarPeliculas = () => {
+        const inputBuscar = document.getElementById("inputBuscar").value.toLowerCase();
+        const lista = document.getElementById("lista");
+
+        lista.innerHTML = "";
+
+        if (inputBuscar) {
+          const resultados = moviesData.filter(pelicula =>
+            pelicula.title.toLowerCase().includes(inputBuscar) ||
+            pelicula.genres.join(", ").toLowerCase().includes(inputBuscar) ||
+            (pelicula.tagline && pelicula.tagline.toLowerCase().includes(inputBuscar)) ||
+            pelicula.overview.toLowerCase().includes(inputBuscar)
+          );
+
+          resultados.forEach(pelicula => {
+            const item = document.createElement("li");
+            item.classList.add("list-group-item", "bg-dark", "text-white");
+
+            item.innerHTML = `
+              <div class="d-flex justify-content-between">
+                <div>
+                  <h5>${pelicula.title}</h5>
+                  <p>${pelicula.tagline || "N/A"}</p>
+                </div>
+                <div class="estrella-container ms-auto">
+                  ${generarEstrellas(pelicula.vote_average)}
+                </div>
+              </div>
+            `;
+
+            item.addEventListener("click", () => {
+              mostrarInformacion(pelicula);
+            });
+
+            lista.appendChild(item);
+          });
+
+          if (resultados.length === 0) {
+            lista.innerHTML = "<li class='list-group-item bg-dark text-white'>No se encontraron coincidencias.</li>";
+          }
+        }
+      };
+
+      const mostrarInformacion = (pelicula) => {
+    const offcanvasBody = document.getElementById("offcanvasBody");
+    const genres = pelicula.genres.map(g => g.name).join(", "); 
+    
+    offcanvasBody.innerHTML = `
+        <h4>${pelicula.title}</h4>
+        <p>${pelicula.overview}</p> 
+        <p>${genres}</p> 
+        
+        <!-- Mostrar información adicional -->
+        <button class="btn btn-secondary mt-3" id="infoButton" type="button" data-bs-toggle="collapse" data-bs-target="#additionalInfo" aria-expanded="false" aria-controls="additionalInfo">
+          More
+        </button>
+        
+        <!-- Contenido del desplegable de información adicional -->
+        <div class="collapse mt-3" id="additionalInfo">
+            <div class="card card-body bg-dark text-white">
+                <p><strong>Año de lanzamiento:</strong> ${new Date(pelicula.release_date).getFullYear()}</p>
+                <p><strong>Duración:</strong> ${pelicula.runtime} minutos</p>
+                <p><strong>Presupuesto:</strong> $${pelicula.budget.toLocaleString()}</p>
+                <p><strong>Ganancias:</strong> $${pelicula.revenue.toLocaleString()}</p>
+            </div>
+        </div>
+    `;
+
+    const offcanvas = new bootstrap.Offcanvas(document.getElementById('offcanvasTop'));
+    offcanvas.show(); 
+};
+      document.getElementById("btnBuscar").addEventListener("click", buscarPeliculas);
+    });
+  </script>
+</head>
+
+<body class="bg-dark">
+  <main>
+    <div class="text-center container">
+      <div class="row py-lg-3">
+        <div class="col-lg-6 col-md-8 mx-auto">
+          <h1 class="fw-light"><img src="img/japflix.png" alt=""></h1>
+          <input type="search" class="form-control" name="buscar" id="inputBuscar" placeholder="Ej.: The Lion King">
+          <button class="btn btn-primary m-2" id="btnBuscar">Buscar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenedor para mostrar la información de la película que seleccionamos -->
+    <div class="offcanvas offcanvas-top" tabindex="-1" id="offcanvasTop" aria-labelledby="offcanvasTopLabel">
+      <div class="offcanvas-header">
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body" id="offcanvasBody">
+        <!-- Aca se muestra la información de la película -->
+      </div>
+    </div>
+
+    <div class="album">
+      <ul class="list-group container" id="lista">
+      </ul>
+    </div>
+  </main>
+
+  <footer class="text-muted py-3">
+    <div class="container">
+      <p class="float-end mb-1">
+        <a href="#">Volver arriba</a>
+      </p>
+      <p class="mb-1">Este sitio forma parte de <a href="https://jovenesaprogramar.edu.uy/" target="_blank">
+          Jovenes a Programar</a>.
+      <p class="mb-1">Generado con fines estrictamente educativos.</p>
+    </div>
+  </footer>
+
+  <script src="js/bootstrap.bundle.min.js"></script>
+
+</body>
+
+</html>
